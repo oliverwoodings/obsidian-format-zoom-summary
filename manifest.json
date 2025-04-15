@@ -1,0 +1,10 @@
+{
+  "id": "zoom-summary-formatter",
+  "name": "Zoom Summary Formatter",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Formats raw Zoom AI meeting summaries into Markdown.",
+  "author": "Your Name",
+  "authorUrl": "https://yourwebsite.com",
+  "main": "main.js"
+}

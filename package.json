@@ -1,0 +1,21 @@
+{
+    "name": "zoom-summary-formatter",
+    "version": "1.0.0",
+    "description": "Formats raw Zoom AI meeting summaries into clean markdown",
+    "main": "main.js",
+    "scripts": {
+        "dev": "rollup -c -w",
+        "build": "rollup -c"
+    },
+    "type": "module",
+    "keywords": [],
+    "author": "Your Name",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^22.14.1",
+        "obsidian": "https://github.com/obsidianmd/obsidian-api/tarball/master",
+        "rollup": "^3.29.4",
+        "rollup-plugin-typescript2": "^0.35.0",
+        "typescript": "^5.0.4"
+    }
+}

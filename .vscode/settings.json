@@ -1,0 +1,8 @@
+{
+    "runOnSave.commands": [
+      {
+        "match": "main\\.ts$",
+        "command": "npm run build"
+      }
+    ]
+  }

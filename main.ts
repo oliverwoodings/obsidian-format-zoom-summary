@@ -30,9 +30,17 @@ export default class ZoomSummaryFormatterPlugin extends Plugin {
   }
 
   formatZoomSummary(text: string): string | null {
-    const quickRecapMatch = text.match(/Quick recap\s+([\s\S]*?)\n(?=Next steps)/i);
-    const nextStepsMatch = text.match(/Next steps\s+([\s\S]*?)\n(?=Summary)/i);
-    const summaryMatch = text.match(/Summary\s+([\s\S]*)$/i);
+    // Clean up the input text - remove consecutive empty lines and standalone markdown headers
+    let cleanedText = text
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/^##\s*$\n+/gm, '')
+      .replace(/^###\s*$\n+/gm, '')
+      .trim();
+      
+    // Match sections with optional markdown headers
+    const quickRecapMatch = cleanedText.match(/(?:##\s*)?\s*Quick recap\s+([\s\S]*?)(?=(?:##\s*)?\s*Next steps)/i);
+    const nextStepsMatch = cleanedText.match(/(?:##\s*)?\s*Next steps\s+([\s\S]*?)(?=(?:##\s*)?\s*Summary)/i);
+    const summaryMatch = cleanedText.match(/(?:##\s*)?\s*Summary\s+([\s\S]*)$/i);
   
     if (!quickRecapMatch || !nextStepsMatch || !summaryMatch) {
       return null;
@@ -40,16 +48,30 @@ export default class ZoomSummaryFormatterPlugin extends Plugin {
   
     const quickRecap = quickRecapMatch[1].trim();
   
+    // Process next steps - preserve existing bullets, add them if missing
     const nextSteps = nextStepsMatch[1]
       .split('\n')
       .filter((line) => line.trim())
-      .map((line) => `- ${line.trim()}`)
+      .map((line) => {
+        // If line already has a bullet point, keep it as is
+        if (line.trim().startsWith('-')) {
+          return line.trim();
+        }
+        return `- ${line.trim()}`;
+      })
       .join('\n');
   
     const summaryRaw = summaryMatch[1].trim();
   
-    const summarySections = summaryRaw
-      .split(/\n\s*\n+/)
+    // Process the summary, handling the new markdown headers format
+    // First, clean up any empty markdown header lines
+    const cleanSummaryRaw = summaryRaw
+      .replace(/^###\s*$\n+/gm, '')
+      .trim();
+    
+    // Split sections by empty lines or ### headers
+    const summarySections = cleanSummaryRaw
+      .split(/(?:\n\s*\n+)|(?=###\s+)/g)
       .map((block) => block.trim())
       .filter((block) => block.length > 0);
   
@@ -57,34 +79,50 @@ export default class ZoomSummaryFormatterPlugin extends Plugin {
     let i = 0;
   
     while (i < summarySections.length) {
-      const maybeTitle = summarySections[i];
-      const maybeBody = summarySections[i + 1];
-  
-      const looksLikeTitle = maybeTitle && !maybeTitle.endsWith('.');
-  
-      if (looksLikeTitle) {
-        const title = `**${maybeTitle}**`;
-        const body = maybeBody && maybeBody.endsWith('.') ? maybeBody : '';
-  
-        const formattedBlock = body
-          ? `${title}\n${body}`
-          : `${title}`;
-  
-        formattedSummary.push(formattedBlock);
-        i += body ? 2 : 1;
+      let section = summarySections[i];
+      
+      // Check if this section starts with a ### heading
+      if (section.startsWith('### ')) {
+        // Extract the heading text
+        const headingMatch = section.match(/^### (.*?)(?:\n|$)/);
+        if (headingMatch) {
+          const headingTitle = headingMatch[1].trim();
+          // Get the content after the heading
+          const content = section.substring(headingMatch[0].length).trim();
+          
+          if (content) {
+            // Format with heading and content
+            formattedSummary.push(`**${headingTitle}**\n${content}`);
+          } else {
+            // If heading with no content
+            formattedSummary.push(`**${headingTitle}**`);
+          }
+        }
       } else {
-        formattedSummary.push(maybeTitle);
-        i += 1;
+        // Handle regular sections as before
+        const looksLikeTitle = section && !section.endsWith('.');
+        
+        if (looksLikeTitle && i + 1 < summarySections.length) {
+          const maybeBody = summarySections[i + 1];
+          
+          if (maybeBody && !maybeBody.startsWith('### ') && maybeBody.endsWith('.')) {
+            formattedSummary.push(`**${section}**\n${maybeBody}`);
+            i += 2;
+            continue;
+          }
+        }
+        
+        formattedSummary.push(section);
       }
+      
+      i++;
     }
   
     const summaryWithSpacing = formattedSummary
       .map((section, index) => (index === 0 ? section : `\n${section}`))
       .join('\n');
   
-    return `### AI Notes
-
-#### Quick Recap
+    return `#### Quick Recap
 ${quickRecap}
 #### Next Steps
 ${nextSteps}
